@@ -382,3 +382,392 @@ Strix builds on the incredible work of open-source projects like [LiteLLM](https
 > You alone are responsible for obtaining authorization and complying with the law. Strix is provided "as is" with no warranty or liability for misuse.
 
 </div>
+
+
+---
+
+## Usando o Strix no Claude Code Online
+
+É possível utilizar o Strix diretamente com o [Claude Code Online](https://claude.ai/code). Nesse modelo, o Claude acessa o código pelo GitHub e utiliza o Strix Cloud para executar as análises de segurança.
+
+> [!IMPORTANT]
+> No Claude Code Online, prefira o **Strix Cloud**. A execução local do Strix depende de Docker e não é a opção mais confiável em sessões cloud temporárias.
+
+### Arquitetura recomendada
+
+```text
+Claude Code Online
+        ↓
+Skills do Strix no repositório
+        ↓
+Strix Cloud
+        ↓
+Repositório + aplicação publicada
+        ↓
+Relatório de vulnerabilidades
+        ↓
+Claude corrige o código
+        ↓
+Novo scan valida a correção
+```
+
+---
+
+### 1. Conectar o repositório ao Claude Code
+
+1. Acesse [claude.ai/code](https://claude.ai/code).
+2. Conecte sua conta do GitHub.
+3. Instale o Claude GitHub App nos repositórios privados.
+4. Selecione o repositório que será analisado.
+
+---
+
+### 2. Instalar as skills do Strix no projeto
+
+Execute no diretório do projeto:
+
+```bash
+npx skills add usestrix/strix
+```
+
+Durante a instalação, selecione:
+
+```text
+Agente: Claude Code
+Escopo: Project
+```
+
+Os arquivos precisam ser adicionados ao seguinte diretório:
+
+```text
+.claude/skills/
+```
+
+Depois, versione os arquivos:
+
+```bash
+git add .claude/skills
+git commit -m "feat: add Strix security skills"
+git push
+```
+
+> [!NOTE]
+> Skills instaladas somente em `~/.claude/skills/` no computador local não ficam disponíveis automaticamente no Claude Code Online. Para sessões cloud, mantenha as skills dentro do repositório.
+
+Depois do merge, inicie uma nova sessão no Claude Code Online.
+
+As principais skills disponíveis serão:
+
+```text
+/application-security-testing
+/penetration-testing-with-strix
+/find-security-vulnerabilities-in-code
+/web-app-penetration-testing
+/api-security-testing
+/owasp-top-10-testing
+/fix-security-vulnerabilities-with-strix
+/ci-security-scanning-with-strix
+/managed-pentesting-with-strix
+```
+
+---
+
+### 3. Configurar o Strix Cloud
+
+1. Acesse [app.strix.ai](https://app.strix.ai).
+2. Crie uma conta.
+3. Conecte o GitHub.
+4. Registre o repositório que será analisado.
+5. Registre o domínio da aplicação.
+6. Faça a verificação de propriedade do domínio.
+7. Acesse `Settings → API Access`.
+8. Crie um token com o menor conjunto de permissões necessário.
+
+Permissões recomendadas:
+
+```text
+scans:read
+scans:write
+vulnerabilities:read
+assets:read
+pr_reviews:write
+```
+
+Nunca coloque o token:
+
+* no código-fonte;
+* no `README.md`;
+* no `CLAUDE.md`;
+* em arquivos versionados;
+* dentro de prompts salvos;
+* em variáveis expostas no frontend.
+
+---
+
+### 4. Configurar o ambiente online do Claude
+
+No Claude Code Online, abra as configurações do Cloud Environment utilizado pelo projeto.
+
+Configure:
+
+```text
+Network access:
+- app.strix.ai
+- docs.strix.ai
+- github.com
+- api.github.com
+
+Credential:
+- STRIX_API_TOKEN
+```
+
+Usuários dos planos Pro e Max podem adicionar credenciais de API protegidas ao Cloud Environment.
+
+Caso não seja possível armazenar o token no ambiente online, utilize o Strix por meio do GitHub Actions e mantenha o token em `GitHub Secrets`.
+
+---
+
+### 5. Analisar somente o repositório
+
+No Claude Code Online, utilize:
+
+```text
+/find-security-vulnerabilities-in-code
+
+Eu sou o proprietário deste repositório e autorizo a análise.
+
+Utilize o Strix Cloud para realizar uma análise de segurança do código.
+
+Priorize:
+- secrets expostos;
+- autenticação;
+- autorização;
+- IDOR;
+- injeções;
+- XSS;
+- SSRF;
+- dependências vulneráveis;
+- configurações inseguras;
+- exposição indevida de dados.
+
+Não altere o código automaticamente.
+
+Primeiro apresente:
+1. vulnerabilidade;
+2. severidade;
+3. evidência;
+4. impacto;
+5. arquivo afetado;
+6. recomendação de correção.
+```
+
+---
+
+### 6. Analisar somente a aplicação publicada
+
+```text
+/web-app-penetration-testing
+
+Eu sou o proprietário e autorizo o teste desta aplicação:
+
+https://staging.exemplo.com
+
+Utilize o Strix Cloud.
+
+Restrições:
+- não excluir dados;
+- não enviar e-mails;
+- não executar pagamentos;
+- não testar serviços de terceiros;
+- não executar ações destrutivas;
+- utilizar somente contas de teste.
+
+Priorize autenticação, autorização, IDOR, XSS, injeções,
+exposição de APIs e vazamento de informações.
+```
+
+> [!WARNING]
+> Prefira sempre um ambiente de staging. O Strix executa payloads reais e pode criar ou modificar dados durante a validação das vulnerabilidades.
+
+---
+
+### 7. Analisar repositório e aplicação juntos
+
+Essa é a opção com melhor cobertura.
+
+```text
+/application-security-testing
+
+Eu sou o proprietário e autorizo o teste deste sistema.
+
+Analise pelo Strix Cloud:
+
+1. O repositório frontend atualmente aberto.
+2. O repositório separado que contém o Supabase.
+3. A aplicação publicada em:
+   https://staging.exemplo.com
+
+Utilize somente o ambiente de staging.
+
+Não execute ações destrutivas, não envie e-mails,
+não acione pagamentos e não exclua dados.
+
+Utilize somente contas de teste.
+
+Priorize:
+- autenticação;
+- autorização;
+- políticas RLS do Supabase;
+- IDOR;
+- isolamento entre usuários;
+- exposição de dados;
+- APIs sem proteção;
+- XSS;
+- injeção;
+- secrets expostos;
+- configurações inseguras.
+
+Não faça alterações automaticamente.
+
+Primeiro apresente o relatório, as evidências,
+o risco e o plano de correção.
+```
+
+---
+
+### 8. Sistemas com frontend e Supabase separados
+
+Quando o sistema utiliza dois repositórios, ambos precisam ser analisados:
+
+```text
+sistema-frontend
+sistema-supabase
+```
+
+O repositório Supabase deve conter, quando aplicável:
+
+```text
+supabase/
+├── migrations/
+├── functions/
+├── config.toml
+├── seed.sql
+└── tests/
+```
+
+Analisar somente o frontend ou somente a URL publicada não é suficiente para verificar:
+
+* políticas RLS;
+* migrations inseguras;
+* permissões de tabelas;
+* funções `SECURITY DEFINER`;
+* Edge Functions;
+* exposição da service role;
+* isolamento entre usuários;
+* autorização no banco.
+
+Para validar RLS e IDOR, forneça duas contas de teste com perfis ou permissões diferentes.
+
+---
+
+### 9. Corrigir vulnerabilidades encontradas
+
+Depois de revisar e aprovar o relatório:
+
+```text
+/fix-security-vulnerabilities-with-strix
+
+Corrija as vulnerabilidades críticas e altas aprovadas.
+
+Requisitos:
+- corrigir a causa raiz;
+- preservar todas as funcionalidades existentes;
+- não alterar contas administrativas sem autorização;
+- não remover o funcionamento offline;
+- manter compatibilidade com Supabase e Cloudflare;
+- executar os testes do projeto;
+- mostrar todos os arquivos alterados;
+- não fazer merge automaticamente.
+
+Depois das correções, execute novamente o Strix
+para comprovar que as vulnerabilidades desapareceram.
+```
+
+---
+
+### 10. Automatizar nos Pull Requests
+
+A abordagem recomendada é executar um scan em cada Pull Request.
+
+Fluxo:
+
+```text
+Desenvolvedor ou Claude cria o PR
+              ↓
+GitHub Actions executa o Strix
+              ↓
+Vulnerabilidade encontrada?
+        ↓                ↓
+       Sim               Não
+        ↓                 ↓
+Bloqueia o PR        Libera o merge
+        ↓
+Claude analisa e corrige
+        ↓
+Novo scan valida a correção
+```
+
+O Strix pode ser configurado diretamente no GitHub Actions ou pela integração de PR Review do Strix Cloud.
+
+Consulte:
+
+* [Strix no GitHub](https://github.com/usestrix/strix)
+* [Documentação do Strix](https://docs.strix.ai)
+* [Strix Cloud](https://app.strix.ai)
+* [Documentação do Claude Code Online](https://code.claude.com/docs/en/claude-code-on-the-web)
+
+---
+
+### Frequência recomendada
+
+| Momento                   | Tipo de análise                         |
+| ------------------------- | --------------------------------------- |
+| Durante o desenvolvimento | Testes, lint, SAST e secret scanning    |
+| Antes de abrir um PR      | Strix Quick no código alterado          |
+| Antes do merge            | Strix obrigatório no GitHub Actions     |
+| Antes da publicação       | Strix Standard no repositório e staging |
+| Release importante        | Strix Deep autenticado                  |
+| Após uma correção         | Novo scan e repetição do PoC            |
+
+---
+
+### Boas práticas de segurança
+
+* Execute pentests apenas em sistemas próprios ou formalmente autorizados.
+* Prefira staging em vez de produção.
+* Utilize contas criadas exclusivamente para testes.
+* Não forneça contas pessoais ou administrativas reais.
+* Não armazene tokens no repositório.
+* Não permita correções e merges completamente automáticos.
+* Revise manualmente cada alteração sugerida.
+* Defina claramente URLs e funcionalidades fora do escopo.
+* Não considere um resultado sem vulnerabilidades como garantia absoluta.
+* Confirme se o scan foi concluído e se todo o escopo foi analisado.
+* Execute um novo scan depois de cada correção relevante.
+
+---
+
+### Resultado esperado
+
+Ao final do processo, o Claude Code Online deverá conseguir:
+
+* analisar o código do repositório;
+* solicitar pentests pelo Strix Cloud;
+* analisar uma aplicação publicada;
+* correlacionar código e ambiente online;
+* interpretar relatórios;
+* criar planos de correção;
+* implementar correções aprovadas;
+* abrir Pull Requests;
+* repetir os testes;
+* comprovar se as vulnerabilidades foram corrigidas.
